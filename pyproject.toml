@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "pydantic-pick"
 dynamic = ["version"]
 description = "Dynamically extract and subset Pydantic V2 models using dot-notation while preserving validators."
-readme = "README.md"
+readme = "README_PYPI.md"
 authors = [
     { name = "Kanishq Vijay", email = "stonesteel27@gmail.com" }
 ]
