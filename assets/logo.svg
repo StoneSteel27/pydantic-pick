@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+    <defs>
+        <!-- Background Gradient: Deep Navy -->
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1B2333" />
+            <stop offset="100%" stop-color="#111622" />
+        </linearGradient>
+
+        <!-- Vertical Gradient for Picked Connection Lines -->
+        <linearGradient id="lineGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#F43F5E" />
+            <stop offset="100%" stop-color="#E92063" />
+        </linearGradient>
+
+        <!-- Glow for Picked Nodes -->
+        <filter id="pink-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#E92063" flood-opacity="0.6" />
+        </filter>
+
+        <!-- Drop Shadow for the "Pick" Badge -->
+        <filter id="badge-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.4" />
+        </filter>
+    </defs>
+
+    <!-- App Icon Base -->
+    <rect width="400" height="400" rx="90" fill="url(#bgGrad)" />
+    <!-- Subtle Inner Rim Light for Premium Polish -->
+    <rect width="396" height="396" x="2" y="2" rx="88" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="2" />
+
+    <!-- Optional Background Rings for Schematic Depth -->
+    <circle cx="200" cy="200" r="140" fill="none" stroke="#FFFFFF" stroke-opacity="0.03" stroke-width="1.5" />
+    <circle cx="200" cy="200" r="90" fill="none" stroke="#FFFFFF" stroke-opacity="0.02" stroke-width="1.5" />
+
+    <!-- ==================== LINES ==================== -->
+    <!-- Drawn behind nodes for clean intersection -->
+
+    <!-- Dropped Branch Lines (Dimmed Navy) -->
+    <!-- Root to Right Child -->
+    <line x1="200" y1="100" x2="280" y2="200" stroke="#2E3A4D" stroke-width="4" stroke-linecap="round" />
+    <!-- Left Child to Left Grandchild -->
+    <line x1="120" y1="200" x2="60" y2="300" stroke="#2E3A4D" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Picked Branch Lines (Bright Pydantic Red/Pink) - ZIGZAG PATH -->
+    <!-- Root to Left Child -->
+    <line x1="200" y1="100" x2="120" y2="200" stroke="url(#lineGrad)" stroke-width="8" stroke-linecap="round" />
+    <!-- Left Child to Right Grandchild (The "Deep Pick") -->
+    <line x1="120" y1="200" x2="180" y2="300" stroke="url(#lineGrad)" stroke-width="8" stroke-linecap="round" />
+
+    <!-- ==================== NODES ==================== -->
+
+    <!-- Dropped Node 1 (Level 1 Right) -->
+    <circle cx="280" cy="200" r="16" fill="#111622" stroke="#3B4A60" stroke-width="3" />
+
+    <!-- Dropped Node 2 (Level 2 Left) -->
+    <circle cx="60" cy="300" r="16" fill="#111622" stroke="#3B4A60" stroke-width="3" />
+
+    <!-- Picked Node 1 (Root, Top Center) -->
+    <circle cx="200" cy="100" r="22" fill="#E92063" stroke="#FFFFFF" stroke-width="4" filter="url(#pink-glow)" />
+
+    <!-- Picked Node 2 (Level 1 Left - branching down-left) -->
+    <circle cx="120" cy="200" r="22" fill="#E92063" stroke="#FFFFFF" stroke-width="4" filter="url(#pink-glow)" />
+
+    <!-- Picked Node 3 (Level 2 Right - branching down-right to show deep nesting) -->
+    <circle cx="180" cy="300" r="22" fill="#E92063" stroke="#FFFFFF" stroke-width="4" filter="url(#pink-glow)" />
+
+    <!-- ==================== PICK MARK ==================== -->
+    <!-- Hovering checkmark badge on the terminal deep-picked node -->
+    <g transform="translate(202, 318)" filter="url(#badge-shadow)">
+        <!-- Crisp white background circle -->
+        <circle cx="0" cy="0" r="14" fill="#FFFFFF" />
+        <!-- Diagonal "Pick" Checkmark -->
+        <path d="M -5 1 L -1.5 4.5 L 5 -2.5" fill="none" stroke="#E92063" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+</svg>

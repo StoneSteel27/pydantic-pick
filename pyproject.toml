@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pydantic-pick"
+dynamic = ["version"]
+description = "Dynamically extract and subset Pydantic V2 models using dot-notation while preserving validators."
+readme = "README.md"
+authors = [
+    { name = "Kanishq Vijay", email = "your.email@example.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0.0"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2"
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/pydantic-pick"
+Issues = "https://github.com/yourusername/pydantic-pick/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+# Add this block at the bottom so Hatchling knows what to package
+[tool.hatch.build.targets.wheel]
+packages = ["pydantic_pick"]
+
+[tool.hatch.version]
+path = "pydantic_pick/__init__.py"
