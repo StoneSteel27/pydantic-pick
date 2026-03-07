@@ -216,11 +216,16 @@ def _extract_dto(base: Type[BaseModel], include: dict[str, Any], new_name: str) 
     MethodMixin = type(f"{new_name}Mixin", (object,), custom_namespace)
     # -------------------------------------------------------------
 
+    # Inject the config directly into the Mixin namespace instead!
+    if hasattr(base, "model_config"):
+        custom_namespace["model_config"] = base.model_config
+
+    MethodMixin = type(f"{new_name}Mixin", (object,), custom_namespace)
+
     # 4. Create Model inherited from both the Mixin and BaseModel
     NewModel = create_model(
         new_name,
         __base__=(MethodMixin, BaseModel),
-        __config__=getattr(base, "model_config", {}),
         __validators__=new_validators,
         **new_fields
     )
