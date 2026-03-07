@@ -123,16 +123,41 @@ for event in database_history:
 Unlike naive `create_model` wrappers, this library actively preserves your business logic:
 - ✅ **Field Constraints:** Everything inside `Field(...)` (like `ge`, `max_length`, `alias`).
 - ✅ **Field Validators:** `@field_validator` logic is preserved (as long as the fields it targets were not omitted).
-- ✅ **Computed Fields:** `@computed_field` properties are carried over and will show up in `.model_dump()`.
+- ✅ **Computed Fields:** `@computed_field` properties are safely carried over.
 - ✅ **Methods:** Custom instance methods, `@classmethod`, `@staticmethod`, and custom wrappers.
 - ✅ **ClassVars:** `typing.ClassVar` attributes are safely mapped.
 - ✅ **Config:** Your `model_config` (like `frozen=True` or `alias_generator`) is inherited.
+
+---
+
+## Intelligent Dependency Resolution (AST Parsing)
+
+What happens if you have a `@computed_field` or a custom method that relies on a data field, but you omit that data field during extraction?
+
+Instead of letting your application crash randomly at runtime with a cryptic Python error, `pydantic-pick` uses **Abstract Syntax Tree (AST) parsing** to peek inside your methods and wrappers. 
+
+It maps exactly which `self` attributes your functions access. **If a method relies on a field that you omitted, `pydantic-pick` gracefully and silently omits the method as well!** This cascades, so if `method_b` relies on `method_a`, and `method_a` was dropped, `method_b` is safely dropped too.
+
+### Clean Developer Experience Errors
+If another developer on your team tries to call a method or field that was dynamically dropped, `pydantic-pick` intercepts it via a custom `__getattr__` and provides a beautiful, clear traceback:
+
+```python
+PublicUser = create_subset(DBUser, ("id", "username"), "PublicUser")
+user = PublicUser(id=1, username="alice")
+
+user.check_password("secret")
+```
+**Output:**
+```text
+AttributeError: 'PublicUser' object has no attribute 'check_password'.
+-> This field/method was intentionally omitted by pydantic-pick during extraction.
+```
 
 ## Truthful Limitations & Quirks
 
 Because dynamic AST generation and Pydantic's Rust-based core have strict boundaries, there are a few edge cases this library **does not** currently handle. Be aware of these before using it in production:
 
-**⚠️ Warning:** Model Validators are Dropped - Both `@model_validator` and `@model_serializer` are ignored during extraction. Because model validators check the entire class state (e.g., checking if `password == confirm_password`), copying them to a subset class where fields might be missing would cause fatal `AttributeError`s at runtime.
+**⚠️ Warning:** Model Validators are Dropped: Model Validators are Dropped: Both `@model_validator` and `@model_serializer` are intentionally ignored during extraction. Because `mode="before"` model validators check dictionary state rather than `self.attribute` state, our AST parser cannot reliably map their dependencies. Copying them to a subset class where fields might be missing would cause fatal dictionary/Attribute errors at runtime, so `pydantic-pick` safely drops them.
 
 1. **Forward References:** If you use string-based forward references for circular imports (e.g., `leader: "User"`), the extraction engine cannot peek inside the string to extract nested fields.
 2. **Private Attributes:** `PrivateAttr()` definitions are currently lost during extraction.
