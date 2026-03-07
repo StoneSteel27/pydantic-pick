@@ -4,6 +4,21 @@
 
 # pydantic-pick
 
+<p align="center">
+  <a href="https://github.com/StoneSteel27/pydantic-pick/actions/workflows/tests.yml">
+    <img src="https://github.com/StoneSteel27/pydantic-pick/actions/workflows/tests.yml/badge.svg" alt="Tests">
+  </a>
+  <a href="https://www.python.org/downloads/">
+    <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue" alt="Python Version">
+  </a>
+  <a href="https://docs.pydantic.dev/">
+    <img src="https://img.shields.io/badge/pydantic-v2-e92063" alt="Pydantic v2">
+  </a>
+  <a href="https://github.com/StoneSteel27/pydantic-pick/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+  </a>
+</p>
+
 > Dynamically extract and subset Pydantic V2 models using dot-notation, while preserving your validators, methods, and constraints.
 
 In modern API development (especially with FastAPI) and AI Agent frameworks, it's common to have a "fat" data model that contains heavy internal data (like `password_hash` or massive `tool_responses`) and a "thin" model for JSON responses or LLM context windows. Manually writing and maintaining dozens of subset models is tedious.
