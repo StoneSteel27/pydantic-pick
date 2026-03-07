@@ -23,8 +23,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/pydantic-pick"
-Issues = "https://github.com/yourusername/pydantic-pick/issues"
+Homepage = "https://github.com/StoneSteel27/pydantic-pick"
+Issues = "https://github.com/StoneSteel27/pydantic-pick/issues"
 
 [project.optional-dependencies]
 dev = [
