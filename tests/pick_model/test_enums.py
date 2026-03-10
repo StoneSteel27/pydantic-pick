@@ -1,6 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 
 class RoleEnum(str, Enum):
@@ -15,7 +15,7 @@ class UserWithEnum(BaseModel):
 
 
 def test_enum_preservation():
-    PublicUser = create_subset(UserWithEnum, ("id", "role"), "PublicUser")
+    PublicUser = pick_model(UserWithEnum, ("id", "role"), "PublicUser")
 
     # Ensure Pydantic still enforces the Enum validation
     user = PublicUser(id=1, role="admin")

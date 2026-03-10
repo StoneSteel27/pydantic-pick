@@ -1,7 +1,7 @@
 import pytest
 from typing import Dict, List, Optional, Union, Set, ClassVar
 from pydantic import BaseModel, Field, ConfigDict, computed_field, field_validator, ValidationError
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 
 # -------------------------------------------------------------------
@@ -88,7 +88,7 @@ def test_ultimate_deep_nested_combination():
         "historical_log.company_name"
     )
 
-    PublicUser = create_subset(EnterpriseUser, paths, "PublicUser")
+    PublicUser = pick_model(EnterpriseUser, paths, "PublicUser")
 
     # --- Assertions before instantiation ---
 

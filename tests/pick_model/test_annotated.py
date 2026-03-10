@@ -1,7 +1,7 @@
 import pytest
 from typing import Annotated, List
 from pydantic import BaseModel, Field, AfterValidator, ValidationError
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 
 def ensure_lowercase(v):
@@ -27,7 +27,7 @@ class RootModel(BaseModel):
 
 def test_annotated_preservation():
     paths = ("items.id", "name")
-    PublicModel = create_subset(RootModel, paths, "PublicModel")
+    PublicModel = pick_model(RootModel, paths, "PublicModel")
 
     # 1. Test basic extraction
     model = PublicModel(name="test", items=[{"id": 1, "secret": "hide"}])

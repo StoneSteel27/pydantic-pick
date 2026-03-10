@@ -2,7 +2,7 @@ import pytest
 from typing import List, Dict, Union
 from typing_extensions import TypeAliasType
 from pydantic import BaseModel
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 # The Pydantic-safe way to define a recursive type in Python < 3.12
 JsonType = TypeAliasType(
@@ -18,7 +18,7 @@ class Webhook(BaseModel):
 
 
 def test_recursive_json_passthrough():
-    PublicWebhook = create_subset(Webhook, ("event_id", "payload"), "PublicWebhook")
+    PublicWebhook = pick_model(Webhook, ("event_id", "payload"), "PublicWebhook")
 
     data = {
         "event_id": "evt_123",

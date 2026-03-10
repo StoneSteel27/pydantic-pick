@@ -7,60 +7,8 @@ import functools
 from typing import Any, ClassVar, List, Set, Tuple, Dict, Type, Union, get_args, get_origin
 from pydantic import BaseModel, create_model, field_validator, computed_field
 
-from .utils import build_include_dict
-
-
-def _unwrap_and_rebuild_type(annotation: Any, inc_val: dict[str, Any], new_name: str) -> Any:
-    """
-    Recursively traverses complex generic types from both the standard library
-    and typing_extensions to find and rebuild inner Pydantic BaseModels.
-    """
-    # Base Case: Direct BaseModel
-    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
-        return _extract_dto(annotation, inc_val, new_name)
-
-    origin = get_origin(annotation)
-    if origin is None:
-        return annotation  # Primitives, Enums, Literals, Any
-
-    args = get_args(annotation)
-    if not args:
-        return annotation
-
-    # 1. Lists
-    if origin is list or origin is List:
-        new_inner = _unwrap_and_rebuild_type(args[0], inc_val, new_name)
-        return list[new_inner]
-
-    # 2. Sets
-    if origin is set or origin is Set:
-        new_inner = _unwrap_and_rebuild_type(args[0], inc_val, new_name)
-        return set[new_inner]
-
-    # 3. Tuples (Can have multiple distinct types: tuple[int, str, Model])
-    if origin is tuple or origin is Tuple:
-        new_args = tuple(_unwrap_and_rebuild_type(arg, inc_val, new_name) for arg in args)
-        return tuple[new_args]
-
-    # 4. Dictionaries (e.g., dict[str, NestedModel])
-    if origin is dict or origin is Dict:
-        key_type = args[0]  # Keys are usually primitives
-        val_type = _unwrap_and_rebuild_type(args[1], inc_val, new_name)
-        return dict[key_type, val_type]
-
-    # 5. Unions and Optionals (including PEP 604 A | B syntax)
-    if origin is Union or origin is types.UnionType:
-        new_args = tuple(_unwrap_and_rebuild_type(arg, inc_val, new_name) for arg in args)
-        return Union[new_args]
-
-    # 6. Annotated (Extremely important for Pydantic V2)
-    if origin is getattr(typing, 'Annotated', None) or str(origin) == "typing.Annotated":
-        base_type = _unwrap_and_rebuild_type(args[0], inc_val, new_name)
-        metadata = args[1:]
-        return typing.Annotated[(base_type,) + metadata]
-
-    # Fallback for completely unknown generic types
-    return annotation
+from .unwrapper import unwrap_and_rebuild_type
+from .utils import build_include_dict, build_exclude_dict
 
 
 # --- AST Validation Tools ---
@@ -133,19 +81,31 @@ def make_getattr(omitted_set):
 
 # --- Core Logic ---
 
-def _extract_dto(base: Type[BaseModel], include: dict[str, Any], new_name: str) -> Type[BaseModel]:
+def _extract_dto(
+        base: Type[BaseModel],
+        rule_map: dict[str, Any],
+        new_name: str,
+        is_exclude: bool = False
+) -> Type[BaseModel]:
     new_fields = {}
 
-    # 1. Extract Fields & Rebuild Types
     for field_name, field_info in base.model_fields.items():
-        if field_name not in include:
-            continue
+        if is_exclude:
+            # OMIT LOGIC
+            if rule_map.get(field_name) is True:
+                continue  # Explicitly dropped!
+            rule = rule_map.get(field_name, {})
+        else:
+            # PICK LOGIC
+            if field_name not in rule_map:
+                continue  # Not picked!
+            rule = rule_map[field_name]
 
-        inc_val = include[field_name]
         annotation = field_info.annotation
 
-        if isinstance(inc_val, dict):
-            new_type = _unwrap_and_rebuild_type(annotation, inc_val, f"{new_name}_{field_name}")
+        # If the rule is a dict, it means we need to evaluate nested models
+        if isinstance(rule, dict) and rule:
+            new_type = unwrap_and_rebuild_type(annotation, rule, f"{new_name}_{field_name}", _extract_dto, is_exclude)
             new_fields[field_name] = (new_type, field_info)
         else:
             new_fields[field_name] = (annotation, field_info)
@@ -243,10 +203,18 @@ def _extract_dto(base: Type[BaseModel], include: dict[str, Any], new_name: str) 
 
 
 @functools.lru_cache(maxsize=128)
-def create_subset(base: Type[BaseModel], paths: tuple[str, ...], new_name: str) -> Type[BaseModel]:
+def pick_model(base: Type[BaseModel], paths: tuple[str, ...], new_name: str) -> Type[BaseModel]:
     """
-    Dynamically creates a subset of a Pydantic BaseModel based on a list of dot-notation paths.
-    Results are cached via LRU cache to ensure high performance in API endpoints.
+    Creates a new Pydantic model by picking ONLY the specified dot-notation paths.
     """
     include_map = build_include_dict(list(paths))
-    return _extract_dto(base, include_map, new_name)
+    return _extract_dto(base, include_map, new_name, is_exclude=False)
+
+
+@functools.lru_cache(maxsize=128)
+def omit_model(base: Type[BaseModel], paths: tuple[str, ...], new_name: str) -> Type[BaseModel]:
+    """
+    Creates a new Pydantic model by keeping everything EXCEPT the specified dot-notation paths.
+    """
+    exclude_map = build_exclude_dict(list(paths))
+    return _extract_dto(base, exclude_map, new_name, is_exclude=True)

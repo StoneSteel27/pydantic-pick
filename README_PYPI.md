@@ -12,13 +12,14 @@
 
 # pydantic-pick
 
-> Dynamically extract and subset Pydantic V2 models using dot-notation, while preserving your validators, methods, and constraints.
+> Dynamically create subsets of Pydantic V2 models using `pick_model` or `omit_model`. Preserves validators, methods, and constraints.
 
-In modern API development (especially with FastAPI) and AI Agent frameworks, it's common to have a "fat" data model that contains heavy internal data (like `password_hash` or massive `tool_responses`) and a "thin" model for JSON responses or LLM context windows. Manually writing and maintaining dozens of subset models is tedious.
+This library provides two approaches for dynamically creating model subsets:
 
-While some existing libraries allow you to subset Pydantic models, **they usually drop all your custom validation logic and methods** when generating the new class. 
+- **`pick_model`** - Keep only the fields you specify. Everything else is dropped.
+- **`omit_model`** - Remove only the fields you specify. Everything else is kept.
 
-`pydantic-pick` is different. It recursively rebuilds your models while safely copying over your `@field_validator`s, `@computed_field`s, `Field` constraints, and user-defined methods.
+Both functions preserve your `Field` constraints, `@field_validator` logic, `@computed_field` properties, custom methods, `ClassVar` attributes, and `model_config` settings. They handle nested models and standard library types: `List`, `Dict`, `Tuple`, `Set`, `Union`, `Optional`, and `Annotated`.
 
 ## Installation
 
@@ -30,16 +31,21 @@ pip install pydantic-pick
 
 ## Quick Start
 
-Pass your base model, a tuple of dot-notation paths to keep, and the name for the new dynamically generated class.
+Both functions take a base model, a tuple of dot-notation paths, and a name for the new class.
+
+### Using `pick_model`
+
+Specify which fields to keep. Everything else is dropped.
 
 ```python
 from pydantic import BaseModel, Field, field_validator
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 class DBUser(BaseModel):
     id: int = Field(..., ge=1)
     username: str
     password_hash: str
+    email: str
     is_active: bool = True
 
     @field_validator("username")
@@ -49,22 +55,42 @@ class DBUser(BaseModel):
             raise ValueError("Reserved username")
         return v
 
-# Create a subset keeping only 'id' and 'username'
-PublicUser = create_subset(DBUser, ("id", "username"), "PublicUser")
+# Keep only 'id' and 'username', drop everything else
+PublicUser = pick_model(DBUser, ("id", "username"), "PublicUser")
 
-# The new model works exactly as expected
 user = PublicUser(id=10, username="alice")
 print(user.model_dump())
 # {'id': 10, 'username': 'alice'}
 
-# AND your validators/constraints survived!
+# Validators and constraints still work
 PublicUser(id=-5, username="bob")      # Fails: id must be >= 1
 PublicUser(id=1, username="admin123")  # Fails: Reserved username
 ```
 
+### Using `omit_model`
+
+Specify which fields to remove. Everything else stays.
+
+```python
+from pydantic_pick import omit_model
+
+# Remove 'password_hash' and 'email', keep everything else
+PublicUser = omit_model(DBUser, ("password_hash", "email"), "PublicUser")
+
+user = PublicUser(id=10, username="alice", is_active=True)
+print(user.model_dump())
+# {'id': 10, 'username': 'alice', 'is_active': True}
+
+# Same validator and constraint behavior
+PublicUser(id=-5, username="bob")      # Fails: id must be >= 1
+PublicUser(id=1, username="admin123")  # Fails: Reserved username
+```
+
+Both approaches preserve your `Field` constraints, validators, and methods.
+
 ## Deep Nesting & Complex Types
 
-`pydantic-pick` handles deeply nested models and complex standard library types natively. You can drill into models wrapped in `List`, `Dict`, `Tuple`, `Set`, `Union`, `Optional`, and `Annotated`.
+Both functions handle nested models and standard library generics: `List`, `Dict`, `Tuple`, `Set`, `Union`, `Optional`, `Annotated`.
 
 ```python
 class Profile(BaseModel):
@@ -73,50 +99,57 @@ class Profile(BaseModel):
 
 class Account(BaseModel):
     user_id: int
-    # Works perfectly through Lists, Dicts, Unions, and Optionals!
-    profiles: list[Profile] 
+    profiles: list[Profile]
+```
 
-# Use dot-notation to drill down into the nested lists
-paths = (
-    "user_id",
-    "profiles.avatar_url"  # Keeps the avatar, drops the billing_secret
-)
+**With `pick_model`** - specify what to keep:
+```python
+paths = ("user_id", "profiles.avatar_url")
+PublicAccount = pick_model(Account, paths, "PublicAccount")
+# Keeps user_id and avatar_url. Drops everything else including billing_secret.
+```
 
-PublicAccount = create_subset(Account, paths, "PublicAccount")
+**With `omit_model`** - specify what to remove:
+```python
+paths = ("profiles.billing_secret",)
+PublicAccount = omit_model(Account, paths, "PublicAccount")
+# Keeps everything except billing_secret.
 ```
 
 ## Advanced Use Case: LLM Context Compression
 
-When building autonomous AI agents, tool responses (like executing a Python script or scraping a webpage) can return thousands of lines of raw output. Appending this directly to your LLM's conversation history quickly exhausts the context window and skyrockets API costs.
+When building autonomous AI agents, tool responses (like executing a Python script or scraping a webpage) can return thousands of lines of raw output. You can use either function to compress this before sending to the LLM.
 
-You can use `pydantic-pick` to maintain a "Fat History" for your database, but dynamically generate a "Thin History" before calling the LLM.
-
+**With `pick_model`** - keep only what you need:
 ```python
 from pydantic import BaseModel
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
-# 1. Your "Fat" schema that gets saved to your database
 class ToolResponse(BaseModel):
-    tool_response: str  # Might contain 10,000 tokens of raw terminal output
-    tool_close_instructions: str = "Analyze the tool_response above. Trigger ToolComplete next."
+    tool_response: str  # Heavy output
+    tool_close_instructions: str = "Analyze the tool_response above."
+    execution_time: float
+    exit_code: int
 
-# 2. Dynamically drop the heavy data, but keep the structural instructions
-CompressedToolResponse = create_subset(
+CompressedResponse = pick_model(
     ToolResponse, 
-    ("tool_close_instructions",), # Keeps instructions, DROPS 'tool_response'
-    "CompressedToolResponse"
+    ("tool_close_instructions", "execution_time"),  # Keep only these
+    "CompressedResponse"
 )
-
-# Now, when you build your LLM prompt payload:
-history_for_llm = []
-for event in database_history:
-    if isinstance(event, ToolResponse):
-        # Convert to thin model, saving thousands of tokens instantly
-        thin_event = CompressedToolResponse(**event.model_dump())
-        history_for_llm.append(thin_event.model_dump_json())
 ```
 
-**💡 Performance Tip:** The `create_subset` function uses `functools.lru_cache`. Generating a model dynamically takes a few milliseconds, but subsequent calls requesting the exact same subset of the same model return instantly from memory. It is completely safe to use inside fast-paced API endpoints or intensive AI agent loops.
+**With `omit_model`** - remove what you don't need:
+```python
+from pydantic_pick import omit_model
+
+CompressedResponse = omit_model(
+    ToolResponse, 
+    ("tool_response",),  # Only drop the heavy field
+    "CompressedResponse"
+)
+```
+
+**Performance Tip:** Both functions use `functools.lru_cache`. Generating a model dynamically takes a few milliseconds, but subsequent calls requesting the exact same subset of the same model return instantly from memory. It is completely safe to use inside fast-paced API endpoints or intensive AI agent loops.
 
 ## What Survives Extraction?
 
@@ -139,10 +172,10 @@ Instead of letting your application crash randomly at runtime with a cryptic Pyt
 It maps exactly which `self` attributes your functions access. **If a method relies on a field that you omitted, `pydantic-pick` gracefully and silently omits the method as well!** This cascades, so if `method_b` relies on `method_a`, and `method_a` was dropped, `method_b` is safely dropped too.
 
 ### Clean Developer Experience Errors
-If another developer on your team tries to call a method or field that was dynamically dropped, `pydantic-pick` intercepts it via a custom `__getattr__` and provides a beautiful, clear traceback:
+If another developer on your team tries to call a method or field that was dynamically dropped, `pydantic-pick` intercepts it via a custom `__getattr__` and provides a clear error:
 
 ```python
-PublicUser = create_subset(DBUser, ("id", "username"), "PublicUser")
+PublicUser = pick_model(DBUser, ("id", "username"), "PublicUser")
 user = PublicUser(id=1, username="alice")
 
 user.check_password("secret")
@@ -153,11 +186,33 @@ AttributeError: 'PublicUser' object has no attribute 'check_password'.
 -> This field/method was intentionally omitted by pydantic-pick during extraction.
 ```
 
+## Function Reference
+
+```python
+from pydantic_pick import pick_model, omit_model
+
+# Keep only specified fields
+pick_model(
+    base: Type[BaseModel],      # Your original model class
+    paths: tuple[str, ...],     # Fields to keep (dot-notation for nested)
+    name: str                   # Name for the new model class
+) -> Type[BaseModel]
+
+# Remove specified fields, keep the rest
+omit_model(
+    base: Type[BaseModel],      # Your original model class
+    paths: tuple[str, ...],     # Fields to remove (dot-notation for nested)
+    name: str                   # Name for the new model class
+) -> Type[BaseModel]
+```
+
+The `paths` parameter uses dot-notation for nested fields (e.g., `"profile.settings.theme"`).
+
 ## Truthful Limitations & Quirks
 
 Because dynamic AST generation and Pydantic's Rust-based core have strict boundaries, there are a few edge cases this library **does not** currently handle. Be aware of these before using it in production:
 
-**⚠️ Warning:** Model Validators are Dropped: Model Validators are Dropped: Both `@model_validator` and `@model_serializer` are intentionally ignored during extraction. Because `mode="before"` model validators check dictionary state rather than `self.attribute` state, our AST parser cannot reliably map their dependencies. Copying them to a subset class where fields might be missing would cause fatal dictionary/Attribute errors at runtime, so `pydantic-pick` safely drops them.
+**Warning:** Both `@model_validator` and `@model_serializer` are intentionally ignored during extraction. Because `mode="before"` model validators check dictionary state rather than `self.attribute` state, our AST parser cannot reliably map their dependencies. Copying them to a subset class where fields might be missing would cause fatal dictionary/Attribute errors at runtime, so `pydantic-pick` safely drops them.
 
 1. **Forward References:** If you use string-based forward references for circular imports (e.g., `leader: "User"`), the extraction engine cannot peek inside the string to extract nested fields.
 2. **Private Attributes:** `PrivateAttr()` definitions are currently lost during extraction.

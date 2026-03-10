@@ -1,6 +1,6 @@
 import pytest
 from pydantic import BaseModel, field_validator, ValidationError
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 
 class ValidatedModel(BaseModel):
@@ -24,7 +24,7 @@ class ValidatedModel(BaseModel):
 
 def test_kept_validator():
     """Ensure validators attached to KEPT fields survive extraction."""
-    PublicModel = create_subset(ValidatedModel, ("age",), "PublicModel")
+    PublicModel = pick_model(ValidatedModel, ("age",), "PublicModel")
 
     # Should raise error from the copied validator
     with pytest.raises(ValidationError, match="Must be at least 18"):
@@ -34,7 +34,7 @@ def test_kept_validator():
 def test_dropped_validator():
     """Ensure validators attached to DROPPED fields are safely ignored without crashing."""
     # We drop 'secret_code', meaning its validator should not cause a crash
-    PublicModel = create_subset(ValidatedModel, ("age",), "PublicModel")
+    PublicModel = pick_model(ValidatedModel, ("age",), "PublicModel")
 
     # Valid instantiation should work perfectly
     model = PublicModel(age=20)

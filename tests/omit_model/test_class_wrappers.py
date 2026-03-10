@@ -1,7 +1,7 @@
 import pytest
 from functools import partial
 from pydantic import BaseModel, ConfigDict
-from pydantic_pick import create_subset
+from pydantic_pick import omit_model
 
 
 # --- Class-Based Decorator ---
@@ -46,7 +46,7 @@ def test_omitted_class_wrapped_methods_raise_custom_error():
     unwrapped (via .func), parsed, and omitted if dependencies are missing.
     """
     # We omit 'confidential_notes'
-    PublicDocument = create_subset(DocumentItem, ("id", "title"), "PublicDocument")
+    PublicDocument = omit_model(DocumentItem, ("confidential_notes",), "PublicDocument")
 
     doc = PublicDocument(id=1, title="Public Specs")
 
@@ -61,12 +61,8 @@ def test_kept_class_wrapped_methods_work_normally():
     Ensures that if the dependencies ARE included, the class wrapper
     survives, binds properly, and tracks state correctly.
     """
-    # We include everything
-    FullDocument = create_subset(
-        DocumentItem,
-        ("id", "title", "confidential_notes"),
-        "FullDocument"
-    )
+    # We keep everything
+    FullDocument = omit_model(DocumentItem, (), "FullDocument")
 
     doc = FullDocument(id=1, title="Public Specs", confidential_notes="Top secret!")
 

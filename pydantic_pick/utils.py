@@ -9,7 +9,7 @@ def build_include_dict(paths: list[str]) -> Dict[str, Any]:
     Example:
         Input: ["id", "profile.city", "profile.settings.theme"]
         Output: {
-            "id": True, 
+            "id": True,
             "profile": {
                 "city": True,
                 "settings": {"theme": True}
@@ -46,3 +46,10 @@ def build_include_dict(paths: list[str]) -> Dict[str, Any]:
                 current = current[part]
 
     return result
+
+
+def build_exclude_dict(paths: list[str]) -> Dict[str, Any]:
+    """Builds a nested map where terminal nodes are True (Meaning: DROP this field)."""
+    # The logic is actually identical to build_include_dict structurally!
+    # True just means "Drop" instead of "Keep" later in the core logic.
+    return build_include_dict(paths)

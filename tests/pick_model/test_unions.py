@@ -1,7 +1,7 @@
 import pytest
 from typing import Union, Optional
 from pydantic import BaseModel
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 
 class OptionA(BaseModel):
@@ -34,7 +34,7 @@ def test_union_and_optional_extraction():
         "choice.pub_b",
         "opt_choice.pub_a"
     )
-    PublicModel = create_subset(MultiModel, paths, "PublicModel")
+    PublicModel = pick_model(MultiModel, paths, "PublicModel")
 
     # Test instantiation with Option A
     model_a = PublicModel(id=1, choice={"type": "A", "pub_a": "hello", "sec_a": "hidden"})

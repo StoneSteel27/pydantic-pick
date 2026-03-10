@@ -1,4 +1,4 @@
-from .core import create_subset
+from .core import pick_model,omit_model
 
-__all__ = ["create_subset"]
-__version__ = "0.1.3"
+__all__ = ["pick_model","omit_model"]
+__version__ = "0.2.0"

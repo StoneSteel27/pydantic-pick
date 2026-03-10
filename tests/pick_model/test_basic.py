@@ -1,6 +1,6 @@
 import pytest
 from pydantic import BaseModel, Field
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 
 class UserFlat(BaseModel):
@@ -12,7 +12,7 @@ class UserFlat(BaseModel):
 
 def test_flat_model_extraction():
     """Ensure basic fields are kept and omitted correctly."""
-    PublicUser = create_subset(UserFlat, ("id", "username"), "PublicUser")
+    PublicUser = pick_model(UserFlat, ("id", "username"), "PublicUser")
 
     # Check fields
     assert "id" in PublicUser.model_fields
@@ -23,7 +23,7 @@ def test_flat_model_extraction():
 
 def test_flat_model_instantiation():
     """Ensure the dynamically created model can be instantiated."""
-    PublicUser = create_subset(UserFlat, ("id", "username"), "PublicUser")
+    PublicUser = pick_model(UserFlat, ("id", "username"), "PublicUser")
     user = PublicUser(id=1, username="alice")
 
     assert user.model_dump() == {"id": 1, "username": "alice"}

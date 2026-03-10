@@ -1,6 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 
 class LiteralModel(BaseModel):
@@ -10,7 +10,7 @@ class LiteralModel(BaseModel):
 
 
 def test_literal_preservation():
-    PublicModel = create_subset(LiteralModel, ("id", "state"), "PublicModel")
+    PublicModel = pick_model(LiteralModel, ("id", "state"), "PublicModel")
 
     # Test default literal assignment
     user1 = PublicModel(id=1)

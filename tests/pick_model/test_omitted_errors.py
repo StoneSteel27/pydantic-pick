@@ -1,6 +1,6 @@
 import pytest
 from pydantic import BaseModel, computed_field
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 import functools
 
 # --- Mock Model for Testing ---
@@ -48,7 +48,7 @@ def test_omitted_attributes_raise_custom_error():
     """
     # We deliberately omit 'tax_rate'.
     # This should cascade and drop 'total_cost', which drops 'print_receipt'.
-    PublicItem = create_subset(InvoiceItem, ("id", "price"), "PublicItem")
+    PublicItem = pick_model(InvoiceItem, ("id", "price"), "PublicItem")
 
     item = PublicItem(id=1, price=100.0)
 
@@ -70,7 +70,7 @@ def test_genuine_missing_attributes_use_standard_error():
     Ensures that if a developer typos a property name, they get a
     standard Python AttributeError, not our custom pydantic-pick one.
     """
-    PublicItem = create_subset(InvoiceItem, ("id", "price"), "PublicItem")
+    PublicItem = pick_model(InvoiceItem, ("id", "price"), "PublicItem")
     item = PublicItem(id=1, price=100.0)
 
     # Accessing a completely fake attribute
@@ -87,7 +87,7 @@ def test_kept_attributes_work_normally():
     Ensures that if dependencies ARE met, methods and computed fields work fine.
     """
     # This time, we include all required dependencies
-    FullItem = create_subset(InvoiceItem, ("id", "price", "tax_rate"), "FullItem")
+    FullItem = pick_model(InvoiceItem, ("id", "price", "tax_rate"), "FullItem")
     item = FullItem(id=1, price=100.0, tax_rate=0.05)
 
     # Nothing should raise an error
@@ -103,7 +103,7 @@ def test_omitted_wrapped_methods_raise_custom_error():
     if their dependencies are missing.
     """
     # We deliberately omit 'secret_code'
-    PublicSecured = create_subset(SecuredItem, ("id", "public_data"), "PublicSecured")
+    PublicSecured = pick_model(SecuredItem, ("id", "public_data"), "PublicSecured")
 
     item = PublicSecured(id=1, public_data="hello")
 
@@ -119,7 +119,7 @@ def test_kept_wrapped_methods_work_normally():
     the method survives and the decorator still functions properly.
     """
     # We include everything
-    FullSecured = create_subset(SecuredItem, ("id", "public_data", "secret_code"), "FullSecured")
+    FullSecured = pick_model(SecuredItem, ("id", "public_data", "secret_code"), "FullSecured")
 
     item = FullSecured(id=1, public_data="hello", secret_code="12345")
 

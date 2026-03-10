@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 
 
 class DeepSettings(BaseModel):
@@ -19,7 +19,7 @@ class UserNested(BaseModel):
 
 def test_nested_model_extraction():
     """Ensure dot-notation correctly rebuilds nested Pydantic models."""
-    PublicUser = create_subset(
+    PublicUser = pick_model(
         UserNested,
         ("id", "profile.bio", "profile.settings.theme"),
         "PublicUser"

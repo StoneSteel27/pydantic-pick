@@ -1,7 +1,7 @@
 import functools
 import pytest
 from pydantic import BaseModel, computed_field
-from pydantic_pick import create_subset
+from pydantic_pick import omit_model
 
 
 # -------------------------------------------------------------------
@@ -40,7 +40,7 @@ class Document(BaseModel):
     id: int
     title: str
     content: str
-    internal_draft: bool  # We will drop this
+    internal_draft: bool  # We will omit this
 
     # A standard Pydantic Computed Field
     @computed_field
@@ -63,39 +63,72 @@ class Document(BaseModel):
 
 
 # -------------------------------------------------------------------
-# The Test
+# The Tests
 # -------------------------------------------------------------------
-def test_all_method_types_and_wrappers():
-    paths = ("id", "title", "content")
-
-    # Extract
-    PublicDoc = create_subset(Document, paths, "PublicDoc")
+def test_omit_preserves_computed_field():
+    """Ensure @computed_field survives when its dependencies are kept."""
+    # Omit internal_draft, keep fields that word_count needs (content)
+    PublicDoc = omit_model(Document, ("internal_draft",), "PublicDoc")
 
     # Instantiate
     doc = PublicDoc(id=1, title="Test Doc", content="This is a very important document.")
 
-    # 1. Assert standard fields work and dropped fields are gone
-    assert doc.id == 1
-    assert not hasattr(doc, "internal_draft")
-
-    # 2. Assert @computed_field perfectly survived and appears in model_dump
+    # Assert @computed_field perfectly survived and appears in model_dump
     assert doc.word_count == 6
     dump = doc.model_dump()
     assert "word_count" in dump
     assert dump["word_count"] == 6
 
-    # 3. Assert standard instance method survived
+
+def test_omit_preserves_standard_method():
+    """Ensure standard instance methods survive."""
+    PublicDoc = omit_model(Document, ("internal_draft",), "PublicDoc")
+
+    doc = PublicDoc(id=1, title="Test Doc", content="This is a very important document.")
+
+    # Assert standard instance method survived
     assert doc.get_summary() == "Test Doc: This is a ..."
 
-    # 4. Assert custom function-wrapper survived and executed
+
+def test_omit_preserves_function_wrapper():
+    """Ensure custom function-wrapper decorators survive."""
+    PublicDoc = omit_model(Document, ("internal_draft",), "PublicDoc")
+
+    doc = PublicDoc(id=1, title="Test Doc", content="This is a very important document.")
+
+    # Assert custom function-wrapper survived and executed
     assert getattr(doc.process_document, "has_run", None) is False
     assert doc.process_document() == "Processed"
     assert getattr(doc.process_document, "has_run", None) is True
 
-    # 5. Assert custom class-based wrapper survived and executed
+
+def test_omit_preserves_class_wrapper():
+    """Ensure custom class-based wrapper decorators survive."""
+    PublicDoc = omit_model(Document, ("internal_draft",), "PublicDoc")
+
+    doc = PublicDoc(id=1, title="Test Doc", content="This is a very important document.")
+
+    # Assert custom class-based wrapper survived and executed
     assert doc.get_formatted_title() == "[DOC] Test Doc"
 
-    # Ensure Pydantic's internal state didn't bleed into standard dir()
-    attrs = dir(doc)
-    assert "model_fields" in attrs
-    assert "process_document" in attrs
+
+def test_omit_cascades_to_computed_field():
+    """If computed_field dependency is omitted, computed_field should be omitted."""
+    # Omit content, which word_count depends on
+    MinimalDoc = omit_model(Document, ("content", "internal_draft"), "MinimalDoc")
+
+    doc = MinimalDoc(id=1, title="Test Doc")
+
+    # word_count should be omitted because it depends on content
+    assert not hasattr(doc, "word_count")
+
+
+def test_omit_cascades_to_method():
+    """If method dependency is omitted, method should be omitted."""
+    # Omit title, which get_summary depends on
+    MinimalDoc = omit_model(Document, ("title", "internal_draft"), "MinimalDoc")
+
+    doc = MinimalDoc(id=1, content="This is content.")
+
+    # get_summary should be omitted because it depends on title
+    assert not hasattr(doc, "get_summary")

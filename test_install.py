@@ -1,6 +1,6 @@
 """Quick test of pydantic-pick from Test PyPI"""
 from pydantic import BaseModel, Field, field_validator
-from pydantic_pick import create_subset
+from pydantic_pick import pick_model
 import pydantic_pick
 
 print(f"Testing pydantic-pick version {pydantic_pick.__version__}")
@@ -21,7 +21,7 @@ class DBUser(BaseModel):
 
 # Test 1: Basic subset creation
 print("\n[PASS] Test 1: Creating subset model")
-PublicUser = create_subset(DBUser, ("id", "username"), "PublicUser")
+PublicUser = pick_model(DBUser, ("id", "username"), "PublicUser")
 print(f"  Created model: {PublicUser.__name__}")
 
 # Test 2: Create instance
