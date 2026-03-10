@@ -1,4 +1,5 @@
 import ast
+import copy
 import inspect
 import textwrap
 import types
@@ -106,9 +107,15 @@ def _extract_dto(
         # If the rule is a dict, it means we need to evaluate nested models
         if isinstance(rule, dict) and rule:
             new_type = unwrap_and_rebuild_type(annotation, rule, f"{new_name}_{field_name}", _extract_dto, is_exclude)
-            new_fields[field_name] = (new_type, field_info)
+            # Copy field_info to avoid mutating the original model's field
+            field_info_copy = copy.copy(field_info)
+            field_info_copy.annotation = new_type
+            new_fields[field_name] = (new_type, field_info_copy)
         else:
-            new_fields[field_name] = (annotation, field_info)
+            # Copy field_info to avoid mutating the original model's field
+            field_info_copy = copy.copy(field_info)
+            field_info_copy.annotation = annotation
+            new_fields[field_name] = (annotation, field_info_copy)
 
     # 2. Extract Class-Level Validators
     new_validators = {}
