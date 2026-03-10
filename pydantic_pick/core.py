@@ -180,7 +180,6 @@ def _extract_dto(
     # Inject custom error handler into the mixin
     custom_namespace['__getattr__'] = make_getattr(omitted_attributes)
 
-    MethodMixin = type(f"{new_name}Mixin", (object,), custom_namespace)
     # -------------------------------------------------------------
 
     # Inject the config directly into the Mixin namespace instead!
